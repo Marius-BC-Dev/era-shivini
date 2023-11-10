@@ -2,10 +2,15 @@ use super::*;
 
 pub struct ProverContext;
 
-pub const ZKSYNC_DEFAULT_TRACE_LOG_LENGTH: usize = 19;
+pub const ZKSYNC_DEFAULT_TRACE_LOG_LENGTH: usize = 20;
+pub const HOST_ALLOCATION_SIZE: usize = 1 * 0x40000000; // 4gb
+pub const SMALL_HOST_ALLOCATION_SIZE: usize = 1 * 0x20000000; // 512mb
+pub const MAX_NUM_TRACE_COLS: usize = 160;
+pub const ZKSYNC_DEFAULT_HOST_ALLOCATION_SIZE: usize =
+    (1 << ZKSYNC_DEFAULT_TRACE_LOG_LENGTH) * 2 * MAX_NUM_TRACE_COLS * std::mem::size_of::<F>();
 
 impl ProverContext {
-    pub fn create() -> CudaResult<Self> {
+    pub fn create(num_gpu_setups: usize) -> CudaResult<Self> {
         unsafe {
             assert!(_cuda_context.is_none());
             assert!(_DEVICE_ALLOCATOR.is_none());
@@ -25,7 +30,7 @@ impl ProverContext {
         let device_alloc = StaticDeviceAllocator::init_all(block_size)?;
 
         let small_host_alloc = SmallStaticHostAllocator::init()?;
-        let host_alloc = StaticHostAllocator::init(block_size, 1 << 8)?;
+        let host_alloc = StaticHostAllocator::init(num_gpu_setups * ZKSYNC_DEFAULT_HOST_ALLOCATION_SIZE)?;
 
         unsafe {
             _cuda_context = Some(cuda_ctx);
@@ -58,9 +63,13 @@ impl ProverContext {
         // grab small slice then consume everything
         let small_device_alloc = SmallStaticDeviceAllocator::init()?;
         let device_alloc = StaticDeviceAllocator::init_14gb(block_size)?;
-        println!("allocated 14gb on device");
+        println!("allocated 14gb on the device");
         let small_host_alloc = SmallStaticHostAllocator::init()?;
-        let host_alloc = StaticHostAllocator::init(block_size, 1 << 8)?;
+        println!(
+            "allocated {}gb on the host",
+            ZKSYNC_DEFAULT_HOST_ALLOCATION_SIZE / 0x40000000
+        );
+        let host_alloc = StaticHostAllocator::init(ZKSYNC_DEFAULT_HOST_ALLOCATION_SIZE)?;
 
         unsafe {
             _cuda_context = Some(cuda_ctx);
@@ -76,7 +85,7 @@ impl ProverContext {
         Ok(Self {})
     }
 
-    pub fn create_14gb() -> CudaResult<Self> {
+    pub fn create_14gb(num_gpu_setups: usize) -> CudaResult<Self> {
         unsafe {
             assert!(_cuda_context.is_none());
             assert!(_DEVICE_ALLOCATOR.is_none());
@@ -96,7 +105,12 @@ impl ProverContext {
         let device_alloc = StaticDeviceAllocator::init_14gb(block_size)?;
         println!("allocated 14gb on device");
         let small_host_alloc = SmallStaticHostAllocator::init()?;
-        let host_alloc = StaticHostAllocator::init(block_size, 1 << 8)?;
+       
+        println!(
+            "allocated {}gb on the host",
+            ZKSYNC_DEFAULT_HOST_ALLOCATION_SIZE / 0x40000000
+        );
+        let host_alloc = StaticHostAllocator::init(num_gpu_setups * ZKSYNC_DEFAULT_HOST_ALLOCATION_SIZE)?;
 
         unsafe {
             _cuda_context = Some(cuda_ctx);
@@ -122,7 +136,7 @@ impl ProverContext {
         let device_alloc = StaticDeviceAllocator::init_all(block_size)?;
 
         let small_host_alloc = SmallStaticHostAllocator::init()?;
-        let host_alloc = StaticHostAllocator::init(block_size, 1 << 8)?;
+        let host_alloc = StaticHostAllocator::init(HOST_ALLOCATION_SIZE)?;
 
         unsafe {
             _cuda_context = Some(cuda_ctx);

@@ -20,8 +20,7 @@ pub struct StaticDeviceAllocator {
 
 impl Default for StaticDeviceAllocator {
     fn default() -> Self {
-        let domain_size = 1 << ZKSYNC_DEFAULT_TRACE_LOG_LENGTH;
-        Self::init_all(domain_size).unwrap()
+        _alloc().clone()
     }
 }
 

@@ -773,7 +773,7 @@ fn gpu_prove_from_trace<
     let num_argument_polys = argument_holder.num_polys();
 
     let (h_evaluations_at_z, h_evaluations_at_z_omega, h_evaluations_at_zero) = {
-        compute_evaluations_over_lagrange_basis(
+        compute_evaluations_over_lagrange_basis::<A>(
             &mut trace_holder,
             &mut setup_holder,
             &mut argument_holder,

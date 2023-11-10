@@ -22,8 +22,7 @@ pub struct StaticHostAllocator {
 
 impl Default for StaticHostAllocator {
     fn default() -> Self {
-        let domain_size = 1 << 20;
-        Self::init(0, 0).unwrap() // TODO
+        _host_alloc().clone()
     }
 }
 
@@ -49,20 +48,19 @@ impl StaticHostAllocator {
         self.block_size_in_bytes
     }
 
-    pub fn init(num_blocks: usize, block_size: usize) -> CudaResult<Self> {
-        assert!(num_blocks > 32);
-        assert!(block_size.is_power_of_two());
-        let memory_size = num_blocks * block_size;
-        let memory_size_in_bytes = memory_size * std::mem::size_of::<F>();
-        let block_size_in_bytes = block_size * std::mem::size_of::<F>();
-
+    
+    pub fn init(memory_size_in_bytes: usize) -> CudaResult<Self> {
+        // assert!(memory_size_in_bytes.is_power_of_two());
+        // let block_size_in_bytes = std::mem::size_of::<F>();
+        let block_size_in_bytes = 4;
+        assert_eq!(memory_size_in_bytes % block_size_in_bytes, 0);
         let memory =
             HostAllocation::alloc(memory_size_in_bytes, CudaHostAllocFlags::DEFAULT).expect(
                 &format!("failed to allocate {} bytes", memory_size_in_bytes),
             );
 
             println!("allocated {} bytes({}gb) on device on host", memory_size_in_bytes, memory_size_in_bytes / 0x40000000);
-
+        let num_blocks = memory_size_in_bytes / block_size_in_bytes;
         let alloc = StaticHostAllocator {
             memory: Arc::new(memory),
             memory_size: memory_size_in_bytes,
@@ -199,11 +197,8 @@ pub struct SmallStaticHostAllocator {
 }
 
 impl SmallStaticHostAllocator {
-    pub fn init() -> CudaResult<Self> {
-        // cuda requires alignment to be  multiple of 32 goldilocks elems
-        let block_size = 32;
-        let num_blocks = 1 << 20; // <1gb
-        let inner = StaticHostAllocator::init(num_blocks, block_size)?;
+    pub fn init() -> CudaResult<Self> {      
+        let inner = StaticHostAllocator::init(SMALL_HOST_ALLOCATION_SIZE)?;
         Ok(Self { inner })
     }
 

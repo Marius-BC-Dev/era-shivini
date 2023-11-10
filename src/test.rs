@@ -93,6 +93,8 @@ use rand::thread_rng;
 
 pub type DefaultDevCS = CSReferenceAssembly<F, F, DevCSConfig>;
 type P = F;
+// pub type DefaultHostAllocator = StaticHostAllocator;
+pub type DefaultHostAllocator = Global;
 use serial_test::serial;
 
 #[serial]
@@ -110,7 +112,7 @@ fn test_proof_comparison_for_poseidon_gate_with_private_witnesses() {
     );
     let domain_size = setup_cs.max_trace_len;
     let ctx = ProverContext::dev(domain_size).expect("init gpu prover context");
-    let gpu_setup = GpuSetup::<Global>::from_setup_and_hints(
+    let gpu_setup = GpuSetup::<DefaultHostAllocator>::from_setup_and_hints(
         setup_base.clone(),
         clone_reference_tree(&setup_tree),
         vars_hint.clone(),
@@ -125,7 +127,7 @@ fn test_proof_comparison_for_poseidon_gate_with_private_witnesses() {
             ProvingCSConfig,
             true,
         >(finalization_hint.as_ref());
-        let proof = prover::gpu_prove::<_, DefaultTranscript, DefaultTreeHasher, NoPow, Global>(
+        let proof = prover::gpu_prove::<_, DefaultTranscript, DefaultTreeHasher, NoPow, DefaultHostAllocator>(
             &mut proving_cs,
             prover_config,
             &gpu_setup,
@@ -263,7 +265,7 @@ fn test_permutation_polys() {
     let ctx = ProverContext::dev(domain_size).expect("init gpu prover context");
 
     let num_copy_permutation_polys = variables_hint.maps.len();
-    let gpu_setup = GpuSetup::<Global>::from_setup_and_hints(
+    let gpu_setup = GpuSetup::<DefaultHostAllocator>::from_setup_and_hints(
         setup_base,
         setup_tree,
         variables_hint,
@@ -326,7 +328,7 @@ fn test_setup_comparison() {
 
     let expected_setup = GenericSetupStorage::from_host_values(&setup_base).unwrap();
 
-    let gpu_setup = GpuSetup::<Global>::from_setup_and_hints(
+    let gpu_setup = GpuSetup::<DefaultHostAllocator>::from_setup_and_hints(
         setup_base, setup_tree, vars_hint, wits_hint, &worker,
     )
     .expect("gpu setup");
@@ -372,7 +374,7 @@ fn test_proof_comparison_for_sha256() {
     let domain_size = setup_cs.max_trace_len;
     let ctx = ProverContext::dev(domain_size).expect("init gpu prover context");
     // let ctx = ProverContext::create_8gb_dev(domain_size).expect("gpu prover context");
-    let gpu_setup = GpuSetup::<Global>::from_setup_and_hints(
+    let gpu_setup = GpuSetup::<DefaultHostAllocator>::from_setup_and_hints(
         setup_base.clone(),
         clone_reference_tree(&setup_tree),
         vars_hint.clone(),
@@ -384,7 +386,7 @@ fn test_proof_comparison_for_sha256() {
     assert!(domain_size.is_power_of_two());
     let actual_proof = {
         let (mut proving_cs, _) = init_cs_for_sha256::<ProvingCSConfig>(finalization_hint.as_ref());
-        let proof = prover::gpu_prove::<_, DefaultTranscript, DefaultTreeHasher, NoPow, Global>(
+        let proof = prover::gpu_prove::<_, DefaultTranscript, DefaultTreeHasher, NoPow, DefaultHostAllocator>(
             &mut proving_cs,
             prover_config,
             &gpu_setup,
@@ -893,7 +895,7 @@ mod zksync {
     #[ignore]
     fn test_single_shot_zksync_setup_comparison() {
         let circuit = get_circuit_from_env();
-        let ctx = ProverContext::create().expect("gpu prover context");
+        let ctx = ProverContext::create(1).expect("gpu prover context");
 
         println!(
             "{} {}",
@@ -916,7 +918,7 @@ mod zksync {
 
         let expected_setup = GenericSetupStorage::from_host_values(&setup_base).unwrap();
 
-        let gpu_setup = GpuSetup::<Global>::from_setup_and_hints(
+        let gpu_setup = GpuSetup::<DefaultHostAllocator>::from_setup_and_hints(
             setup_base, setup_tree, vars_hint, wits_hint, &worker,
         )
         .expect("gpu setup");
@@ -941,7 +943,7 @@ mod zksync {
     #[test]
     fn compare_proofs_for_all_zksync_circuits() -> CudaResult<()> {
         let worker = &Worker::new();
-        let ctx = ProverContext::create()?;
+        let ctx = ProverContext::create(1)?;
 
         for main_dir in ["base", "leaf", "node"] {
             let data_dir = format!("./test_data/{}", main_dir);
@@ -981,7 +983,7 @@ mod zksync {
                         proof_config.merkle_tree_cap_size,
                     );
 
-                let gpu_setup = GpuSetup::<Global>::from_setup_and_hints(
+                let gpu_setup = GpuSetup::<DefaultHostAllocator>::from_setup_and_hints(
                     setup_base.clone(),
                     setup_tree,
                     vars_hint.clone(),
@@ -994,7 +996,7 @@ mod zksync {
                 let gpu_proof = {
                     let mut proving_cs =
                         synth_circuit_for_proving(circuit.clone(), &finalization_hint);
-                    gpu_prove::<_, DefaultTranscript, DefaultTreeHasher, NoPow, Global>(
+                    gpu_prove::<_, DefaultTranscript, DefaultTreeHasher, NoPow, DefaultHostAllocator>(
                         &mut proving_cs,
                         proof_config,
                         &gpu_setup,
@@ -1096,7 +1098,7 @@ mod zksync {
     #[ignore]
     fn compare_proofs_for_single_zksync_circuit_in_single_shot() {
         let circuit = get_circuit_from_env();
-        let ctx = ProverContext::create_14gb().expect("gpu prover context");
+        let ctx = ProverContext::create_14gb(1).expect("gpu prover context");
 
         println!(
             "{} {}",
@@ -1123,7 +1125,7 @@ mod zksync {
         let mut proving_cs = synth_circuit_for_proving(circuit.clone(), &finalization_hint);
 
         println!("gpu proving");
-        let gpu_setup = GpuSetup::<Global>::from_setup_and_hints(
+        let gpu_setup = GpuSetup::<DefaultHostAllocator>::from_setup_and_hints(
             setup_base.clone(),
             clone_reference_tree(&setup_tree),
             vars_hint.clone(),
@@ -1132,7 +1134,7 @@ mod zksync {
         )
         .expect("gpu setup");
         let gpu_proof = {
-            gpu_prove::<_, DefaultTranscript, DefaultTreeHasher, NoPow, Global>(
+            gpu_prove::<_, DefaultTranscript, DefaultTreeHasher, NoPow, DefaultHostAllocator>(
                 &mut proving_cs,
                 proof_cfg.clone(),
                 &gpu_setup,
@@ -1162,7 +1164,7 @@ mod zksync {
         let start = std::time::Instant::now();
         let actual_proof = gpu_proof.into();
         println!("proof transformation takes {:?}", start.elapsed());
-        // circuit.verify_proof(&vk, &actual_proof); // TODO
+        circuit.verify_proof(&vk, &actual_proof);
         compare_proofs(&reference_proof, &actual_proof);
     }
 
@@ -1171,7 +1173,7 @@ mod zksync {
     #[ignore]
     fn compare_proofs_with_external_synthesis_for_single_zksync_circuit_in_single_shot() {
         let circuit = get_circuit_from_env();
-        let ctx = ProverContext::create().expect("gpu prover context");
+        let ctx = ProverContext::create(1).expect("gpu prover context");
 
         println!(
             "{} {}",
@@ -1198,7 +1200,7 @@ mod zksync {
         let mut proving_cs = synth_circuit_for_proving(circuit.clone(), &finalization_hint);
 
         println!("gpu proving");
-        let gpu_setup = GpuSetup::<Global>::from_setup_and_hints(
+        let gpu_setup = GpuSetup::<DefaultHostAllocator>::from_setup_and_hints(
             setup_base.clone(),
             clone_reference_tree(&setup_tree),
             vars_hint.clone(),
@@ -1214,7 +1216,7 @@ mod zksync {
                 DefaultTranscript,
                 DefaultTreeHasher,
                 NoPow,
-                Global,
+                DefaultHostAllocator,
             >(
                 &reusable_cs,
                 &witness,
@@ -1337,7 +1339,7 @@ mod zksync {
     #[ignore]
     fn test_generate_gpu_setups_for_all_zksync_circuits() {
         let worker = Worker::new();
-        let ctx = ProverContext::create().expect("gpu context");
+        let ctx = ProverContext::create(1).expect("gpu context");
         let worker = &Worker::new();
 
         for main_dir in ["base", "leaf", "node"] {
@@ -1370,7 +1372,7 @@ mod zksync {
                 );
                 let (variables_hint, wits_hint) = setup_cs.create_copy_hints();
 
-                let gpu_setup = GpuSetup::<Global>::from_setup_and_hints(
+                let gpu_setup = GpuSetup::<DefaultHostAllocator>::from_setup_and_hints(
                     reference_base_setup,
                     reference_setup_tree,
                     variables_hint,

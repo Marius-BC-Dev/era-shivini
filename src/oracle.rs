@@ -407,7 +407,7 @@ pub fn batch_query_leaf_sources<A: GoodAllocator>(
 
 #[test]
 fn test_batch_query_for_leaf_sources() -> CudaResult<()> {
-    let _ctx = ProverContext::create_14gb()?;
+    let _ctx = ProverContext::create_14gb(1)?;
     let domain_size = 1 << 16;
     let lde_degree = 2;
     let num_cols = 2;
@@ -527,7 +527,7 @@ fn run_batch_query_for_leaf_sources(
 
 #[test]
 fn test_batch_query_for_fri_layers() -> CudaResult<()> {
-    let _ctx = ProverContext::create_14gb()?;
+    let _ctx = ProverContext::create_14gb(1)?;
     let domain_size = 1 << 16;
     let lde_degree = 2;
     let num_cols = 2;
@@ -681,7 +681,7 @@ fn run_batch_query_for_fri_layers(
 
 #[test]
 fn test_batch_query_for_merkle_paths() -> CudaResult<()> {
-    let _ctx = ProverContext::create_14gb()?;
+    let _ctx = ProverContext::create_14gb(1)?;
     let domain_size = 1 << 4;
     let lde_degree = 2;
     let num_cols = 2;
