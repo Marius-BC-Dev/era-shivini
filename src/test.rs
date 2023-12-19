@@ -752,6 +752,7 @@ mod zksync {
 
     use super::*;
 
+    use crate::cs::PACKED_PLACEHOLDER_BITMASK;
     use boojum::cs::implementations::fast_serialization::MemcopySerializable;
     use circuit_definitions::{
         aux_definitions::witness_oracle::VmWitnessOracle,
@@ -1044,7 +1045,7 @@ mod zksync {
     fn compare_proofs_for_single_zksync_circuit_in_single_shot() {
         range_push!("compare_proofs_for_single_zksync_circuit_in_single_shot");
         let circuit = get_circuit_from_env();
-        let _ctx = ProverContext::create_limited().expect("gpu prover context");
+        let _ctx = ProverContext::create().expect("gpu prover context");
 
         println!(
             "{} {}",
@@ -1262,7 +1263,7 @@ mod zksync {
         let mut setup_cache =
             SetupCache::new(&gpu_setup, &proof_config, &proving_cs).expect("setup cache");
         witness.public_inputs_locations = vec![(0, 0)];
-        gpu_setup.variables_hint[0][0] = 1 << 31;
+        gpu_setup.variables_hint[0][0] = PACKED_PLACEHOLDER_BITMASK;
         let _ = gpu_prove_from_external_witness_data::<
             _,
             DefaultTranscript,

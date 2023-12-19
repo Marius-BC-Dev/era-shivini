@@ -12,12 +12,13 @@ use boojum::{
     field::U64Representable,
     worker::Worker,
 };
+use cudart::slice::CudaSlice;
 use std::ops::Deref;
 use std::rc::Rc;
 
 use crate::{
-    cs::{variable_assignment, GpuSetup},
-    primitives::tree::POSEIDON_RATE,
+    cs::{variable_assignment, GpuSetup, PACKED_PLACEHOLDER_BITMASK},
+    primitives::{helpers::set_by_value, tree::POSEIDON_RATE},
 };
 
 use super::*;
@@ -240,31 +241,29 @@ pub fn construct_trace_storage_from_remote_witness_data<A: GoodAllocator>(
     let (variables_monomial_storage, remaining_monomial_storage) =
         remaining_monomial_storage.split_at_mut(num_variable_cols * domain_size);
 
-    if setup_cache.variables_hint.is_none() {
-        let transferred = CudaEvent::create_with_flags(CudaEventCreateFlags::DISABLE_TIMING)?;
-        let mut variables_hint_cache = Vec::with_capacity(variables_hint.len());
-        for variables in variables_hint {
-            let mut d_variable_indexes = dvec!(variables.len());
-            mem::h2d_on_stream(variables, &mut d_variable_indexes, &inner_h2d_stream)?;
-            variables_hint_cache.push(d_variable_indexes);
-        }
-        transferred.record(&inner_h2d_stream)?;
-        get_stream().wait_event(&transferred, CudaStreamWaitEventFlags::DEFAULT)?;
-        setup_cache.variables_hint = Some(variables_hint_cache);
+    let create_variable_indexes = setup_cache.variables_hint.is_none();
+    if create_variable_indexes {
+        let d_indexes = dvec!(num_variable_cols * domain_size);
+        setup_cache.variables_hint = Some(d_indexes);
     }
-
-    let variables_hint_cached = setup_cache.variables_hint.as_ref().unwrap();
-
-    for ((d_variable_indexes, d_variables_raw), d_variables_monomial) in variables_hint_cached
+    let d_variable_indexes = setup_cache.variables_hint.as_mut().unwrap();
+    for (((variables, d_variables_raw), d_variables_monomial), d_variable_indexes) in variables_hint
         .iter()
         .zip(variables_raw_storage.chunks_mut(domain_size))
         .zip(variables_monomial_storage.chunks_mut(domain_size))
+        .zip(d_variable_indexes.chunks_mut(domain_size))
     {
-        variable_assignment(&d_variable_indexes, &d_variable_values, d_variables_raw)?;
-        let (_, padding) = d_variables_raw.split_at_mut(d_variable_indexes.len());
-        if !padding.is_empty() {
-            helpers::set_zero(padding)?;
+        if create_variable_indexes {
+            let transferred = CudaEvent::create_with_flags(CudaEventCreateFlags::DISABLE_TIMING)?;
+            let (indexes, padding) = d_variable_indexes.split_at_mut(variables.len());
+            mem::h2d_on_stream(variables, indexes, inner_h2d_stream)?;
+            if !padding.is_empty() {
+                set_by_value(padding, PACKED_PLACEHOLDER_BITMASK, inner_h2d_stream)?;
+            }
+            transferred.record(&inner_h2d_stream)?;
+            get_stream().wait_event(&transferred, CudaStreamWaitEventFlags::DEFAULT)?;
         }
+        variable_assignment(&d_variable_indexes, &d_variable_values, d_variables_raw)?;
         ntt::ifft_into(d_variables_raw, d_variables_monomial)?;
     }
 
@@ -277,33 +276,31 @@ pub fn construct_trace_storage_from_remote_witness_data<A: GoodAllocator>(
     // hints may not be proper rectangular, so look for at least one non-empty col
     let has_witnesses = witnesses_hint.iter().any(|v| !v.is_empty());
     if has_witnesses {
-        if setup_cache.witnesses_hint.is_none() {
-            let transferred = CudaEvent::create_with_flags(CudaEventCreateFlags::DISABLE_TIMING)?;
-            let mut witnesses_hint_cache = Vec::with_capacity(witnesses_hint.len());
-            for witnesses in witnesses_hint {
-                let mut d_witness_indexes = dvec!(witnesses.len());
-                mem::h2d_on_stream(witnesses, &mut d_witness_indexes, &inner_h2d_stream)?;
-                witnesses_hint_cache.push(d_witness_indexes);
-            }
-            transferred.record(&inner_h2d_stream)?;
-            get_stream().wait_event(&transferred, CudaStreamWaitEventFlags::DEFAULT)?;
-            setup_cache.witnesses_hint = Some(witnesses_hint_cache);
+        let create_witness_indexes = setup_cache.witnesses_hint.is_none();
+        if create_witness_indexes {
+            let d_indexes = dvec!(num_witness_cols * domain_size);
+            setup_cache.witnesses_hint = Some(d_indexes);
         }
-
-        let witnesses_hint_cached = setup_cache.witnesses_hint.as_ref().unwrap();
-
-        for ((d_witness_indexes, d_witnesses_raw), d_witnesses_monomial) in witnesses_hint_cached
-            .iter()
-            .zip(witnesses_raw_storage.chunks_mut(domain_size))
-            .zip(witnesses_monomial_storage.chunks_mut(domain_size))
+        let d_witness_indexes = setup_cache.witnesses_hint.as_mut().unwrap();
+        for (((witnesses, d_witnesses_raw), d_witnesses_monomial), d_witness_indexes) in
+            witnesses_hint
+                .iter()
+                .zip(witnesses_raw_storage.chunks_mut(domain_size))
+                .zip(witnesses_monomial_storage.chunks_mut(domain_size))
+                .zip(d_witness_indexes.chunks_mut(domain_size))
         {
-            range_push!("variable_assignment");
-            variable_assignment(&d_witness_indexes, &d_variable_values, d_witnesses_raw)?;
-            range_pop!();
-            let (_, padding) = d_witnesses_raw.split_at_mut(d_witness_indexes.len());
-            if !padding.is_empty() {
-                helpers::set_zero(padding)?;
+            if create_witness_indexes {
+                let transferred =
+                    CudaEvent::create_with_flags(CudaEventCreateFlags::DISABLE_TIMING)?;
+                let (indexes, padding) = d_witness_indexes.split_at_mut(witnesses.len());
+                mem::h2d_on_stream(witnesses, indexes, inner_h2d_stream)?;
+                if !padding.is_empty() {
+                    set_by_value(padding, PACKED_PLACEHOLDER_BITMASK, inner_h2d_stream)?;
+                }
+                transferred.record(&inner_h2d_stream)?;
+                get_stream().wait_event(&transferred, CudaStreamWaitEventFlags::DEFAULT)?;
             }
+            variable_assignment(&d_witness_indexes, &d_variable_values, d_witnesses_raw)?;
             ntt::ifft_into(d_witnesses_raw, d_witnesses_monomial)?;
         }
     } else {
@@ -722,6 +719,12 @@ impl AsSingleSlice for &GenericTraceStorage<CosetEvaluations> {
     fn as_single_slice(&self) -> &[F] {
         self.storage.as_single_slice()
     }
+}
+
+pub enum TraceCacheLevel {
+    Monomials,
+    FriCosets,
+    All,
 }
 
 // we want a holder that either
