@@ -7,12 +7,12 @@
 mod context;
 #[cfg(test)]
 mod test;
-// use circuit_definitions::boojum as boojum;
+pub use boojum;
 use boojum::algebraic_props::round_function::AbsorptionModeOverwrite;
 use boojum::algebraic_props::sponge::GoldilocksPoseidon2Sponge;
 use boojum::cs::implementations::transcript::GoldilocksPoisedon2Transcript;
-use boojum::field::goldilocks::GoldilocksExt2 as EXT;
-use boojum::field::goldilocks::GoldilocksField as F;
+pub use boojum::field::goldilocks::GoldilocksExt2 as EXT;
+pub use boojum::field::goldilocks::GoldilocksField as F;
 use boojum::field::{ExtensionField, Field, PrimeField};
 use context::*;
 mod oracle;
@@ -44,9 +44,10 @@ mod prover;
 mod quotient;
 #[cfg(feature = "zksync")]
 pub mod synthesis_utils;
+#[cfg(feature = "zksync")]
+pub use circuit_definitions;
 
 use quotient::*;
-type EF = ExtensionField<F, 2, EXT>;
 
 use std::alloc::Global;
 use std::slice::Chunks;
@@ -59,12 +60,15 @@ use primitives::helpers;
 
 use primitives::ntt;
 use primitives::tree;
-
-type DefaultTranscript = GoldilocksPoisedon2Transcript;
-type DefaultTreeHasher = GoldilocksPoseidon2Sponge<AbsorptionModeOverwrite>;
+pub type EF = ExtensionField<F, 2, EXT>;
+pub type DefaultTranscript = GoldilocksPoisedon2Transcript;
+pub type DefaultTreeHasher = GoldilocksPoseidon2Sponge<AbsorptionModeOverwrite>;
 use boojum::cs::traits::GoodAllocator;
 pub use context::ProverContext;
-pub use prover::{gpu_prove, gpu_prove_from_external_witness_data};
+pub use cs::GpuSetup;
+pub use prover::{gpu_prove, gpu_prove_from_external_witness_data, GpuProof};
+#[cfg(feature = "zksync")]
+pub use synthesis_utils::*;
 #[cfg(feature = "recompute")]
 pub(crate) const REMEMBER_COSETS: bool = false;
 #[cfg(not(feature = "recompute"))]

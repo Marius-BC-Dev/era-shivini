@@ -180,7 +180,7 @@ pub fn construct_trace_storage_from_remote_witness_data<A: GoodAllocator>(
     fri_lde_degree: usize,
     domain_size: usize,
     setup: &GpuSetup<A>,
-    witness_data: &WitnessVec<F>,
+    witness_data: &WitnessVec<F, A>,
     lookup_parameters: &LookupParameters,
     worker: &Worker,
 ) -> CudaResult<(

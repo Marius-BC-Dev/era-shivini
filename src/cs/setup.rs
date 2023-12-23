@@ -1,6 +1,7 @@
 use boojum::{
     cs::{
         implementations::{
+            fast_serialization::MemcopySerializable,
             hints::{DenseVariablesCopyHint, DenseWitnessCopyHint},
             polynomial_storage::SetupBaseStorage,
             setup::TreeNode,
@@ -234,6 +235,24 @@ impl<A: GoodAllocator> GpuSetup<A> {
             setup_tree,
             layout,
         })
+    }
+}
+
+impl<A: GoodAllocator> MemcopySerializable for GpuSetup<A>
+where
+    A: 'static,
+{
+    fn write_into_buffer<W: std::io::prelude::Write>(
+        &self,
+        dst: W,
+    ) -> Result<(), Box<dyn std::error::Error>> {
+        todo!()
+    }
+
+    fn read_from_buffer<R: std::io::prelude::Read>(
+        src: R,
+    ) -> Result<Self, Box<dyn std::error::Error>> {
+        todo!()
     }
 }
 

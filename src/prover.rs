@@ -41,7 +41,7 @@ pub fn gpu_prove_from_external_witness_data<
 >(
     // service layer reuses assembly for repeated proving, so that just borrow it
     cs: &CSReferenceAssembly<F, P, ProvingCSConfig>,
-    external_witness_data: &WitnessVec<F>, // TODO: read data from Assembly pinned storage
+    external_witness_data: &WitnessVec<F, A>, // TODO: read data from Assembly pinned storage
     proof_config: ProofConfig,
     setup: &GpuSetup<A>,
     vk: &VerificationKey<F, H>,

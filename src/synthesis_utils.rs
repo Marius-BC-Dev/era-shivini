@@ -33,7 +33,7 @@ type ZksyncProof = Proof<F, DefaultTreeHasher, GoldilocksExt2>;
 type EXT = GoldilocksExt2;
 
 #[derive(Clone, serde::Serialize, serde::Deserialize)]
-pub(crate) enum CircuitWrapper {
+pub enum CircuitWrapper {
     Base(ZkSyncBaseLayerCircuit<F, VmWitnessOracle<F>, ZkSyncDefaultRoundFunction>),
     Recursive(ZkSyncRecursiveLayerCircuit),
 }
@@ -211,8 +211,7 @@ pub(crate) fn synth_circuit_for_proving(
     cs
 }
 
-#[allow(dead_code)]
-pub(crate) fn init_cs_for_external_proving_without_hint(
+pub fn init_cs_for_external_proving_without_hint(
     circuit: CircuitWrapper,
 ) -> CSReferenceAssembly<F, F, ProvingCSConfig> {
     let (_, some_finalization_hint) =
@@ -240,7 +239,7 @@ pub fn init_recursive_layer_cs_for_repeated_proving(
     init_cs_for_external_proving(CircuitWrapper::Recursive(circuit), hint)
 }
 
-pub(crate) fn init_cs_for_external_proving(
+pub fn init_cs_for_external_proving(
     circuit: CircuitWrapper,
     hint: &FinalizationHintsForProver,
 ) -> CSReferenceAssembly<F, F, ProvingCSConfig> {
@@ -251,7 +250,7 @@ pub(crate) fn init_cs_for_external_proving(
 }
 
 // this function doesn't work DevCSConfig!
-pub(crate) fn init_or_synthesize_assembly<CFG: CSConfig, const DO_SYNTH: bool>(
+pub fn init_or_synthesize_assembly<CFG: CSConfig, const DO_SYNTH: bool>(
     circuit: CircuitWrapper,
     finalization_hint: Option<&FinalizationHintsForProver>,
 ) -> (
