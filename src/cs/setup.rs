@@ -1,7 +1,9 @@
 use boojum::{
     cs::{
         implementations::{
-            fast_serialization::MemcopySerializable,
+            fast_serialization::{
+                read_vec_from_buffer, write_vec_into_buffer, MemcopySerializable,
+            },
             hints::{DenseVariablesCopyHint, DenseWitnessCopyHint},
             polynomial_storage::SetupBaseStorage,
             setup::TreeNode,
@@ -36,6 +38,53 @@ pub struct GpuSetup<A: GoodAllocator> {
     pub selectors_placement: TreeNode,
     pub setup_tree: MerkleTreeWithCap<F, DefaultTreeHasher>,
     pub layout: SetupLayout,
+}
+
+impl<A: GoodAllocator> MemcopySerializable for GpuSetup<A>
+where
+    A: 'static,
+{
+    fn write_into_buffer<W: std::io::prelude::Write>(
+        &self,
+        mut dst: W,
+    ) -> Result<(), Box<dyn std::error::Error>> {
+        write_vec_into_buffer(&self.constant_columns, &mut dst)?;
+        write_vec_into_buffer(&self.lookup_tables_columns, &mut dst)?;
+        write_vec_into_buffer(&self.variables_hint, &mut dst)?;
+        write_vec_into_buffer(&self.witnesses_hint, &mut dst)?;
+        write_vec_into_buffer(&self.table_ids_column_idxes, &mut dst)?;
+        bincode::serialize_into(&mut dst, &self.selectors_placement)?;
+        MemcopySerializable::write_into_buffer(&self.setup_tree, &mut dst)?;
+        bincode::serialize_into(&mut dst, &self.layout)?;
+
+        Ok(())
+    }
+
+    fn read_from_buffer<R: std::io::prelude::Read>(
+        mut src: R,
+    ) -> Result<Self, Box<dyn std::error::Error>> {
+        let constant_columns = read_vec_from_buffer(&mut src)?;
+        let lookup_tables_columns = read_vec_from_buffer(&mut src)?;
+        let variables_hint = read_vec_from_buffer(&mut src)?;
+        let witnesses_hint = read_vec_from_buffer(&mut src)?;
+        let table_ids_column_idxes = read_vec_from_buffer(&mut src)?;
+        let selectors_placement = bincode::deserialize_from(&mut src)?;
+        let setup_tree = MemcopySerializable::read_from_buffer(&mut src)?;
+        let layout = bincode::deserialize_from(&mut src)?;
+
+        let this = Self {
+            constant_columns,
+            lookup_tables_columns,
+            variables_hint,
+            witnesses_hint,
+            table_ids_column_idxes,
+            selectors_placement,
+            setup_tree,
+            layout,
+        };
+
+        Ok(this)
+    }
 }
 
 pub fn transform_indexes_on_device<A: GoodAllocator, T>(
@@ -235,24 +284,6 @@ impl<A: GoodAllocator> GpuSetup<A> {
             setup_tree,
             layout,
         })
-    }
-}
-
-impl<A: GoodAllocator> MemcopySerializable for GpuSetup<A>
-where
-    A: 'static,
-{
-    fn write_into_buffer<W: std::io::prelude::Write>(
-        &self,
-        dst: W,
-    ) -> Result<(), Box<dyn std::error::Error>> {
-        todo!()
-    }
-
-    fn read_from_buffer<R: std::io::prelude::Read>(
-        src: R,
-    ) -> Result<Self, Box<dyn std::error::Error>> {
-        todo!()
     }
 }
 
