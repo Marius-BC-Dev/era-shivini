@@ -470,7 +470,6 @@ pub fn compute_fri<T: Transcript<F, CompatibleCap = [F; 4]>, A: GoodAllocator>(
     // since last codeword is tiny we can do ifft and asserts on the cpu
     let last_code_word = intermediate_codewords.pop().unwrap();
     let last_code_len = last_code_word.length();
-    dbg!(last_code_word.length().trailing_zeros());
     let last_code_word_flattened = last_code_word.storage.to_vec_in(A::default())?;
     // FIXME: we can still construct monomials on the device for better stream handling
     synchronize_streams()?;

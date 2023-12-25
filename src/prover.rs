@@ -70,7 +70,6 @@ pub fn gpu_prove_from_external_witness_data<
         num_witness_cols,
         num_multiplicity_cols,
     };
-    dbg!(&trace_layout);
     let domain_size = cs.max_trace_len;
     let start = std::time::Instant::now();
     let quotient_degree = compute_quotient_degree(&cs, &setup.selectors_placement);
@@ -910,7 +909,6 @@ fn gpu_prove_from_trace<
         let storage = DVec::from_raw_parts_in(ptr, 2 * len, 2 * cap, allocator);
         CodeWord::new_base_assuming_adjacent(storage, fri_lde_degree)
     };
-    dbg!(first_codeword.length());
 
     let (mut fri_holder, final_fri_monomials) = compute_fri::<_, A>(
         first_codeword,

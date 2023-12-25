@@ -190,9 +190,6 @@ pub fn construct_trace_storage_from_remote_witness_data<A: GoodAllocator>(
     Vec<[F; 4]>,
 )> {
     let num_polys = trace_layout.num_polys();
-    dbg!(num_polys);
-    dbg!(domain_size);
-
     let TraceLayout {
         num_variable_cols,
         num_witness_cols,
@@ -207,7 +204,6 @@ pub fn construct_trace_storage_from_remote_witness_data<A: GoodAllocator>(
     } = setup;
     let setup_root = setup_tree.get_cap();
     let cap_size = setup_root.len();
-    dbg!(&cap_size); // TODO
     assert_eq!(num_variable_cols, variables_hint.len());
     assert_eq!(num_witness_cols, witnesses_hint.len());
     assert!(num_multiplicity_cols <= 1);
